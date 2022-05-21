@@ -1,0 +1,148 @@
+---
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data library, echo=FALSE, warning=FALSE, message=FALSE}
+data <- read.csv('DIA.csv')
+date <- read.csv('date_2.csv')
+library(tidyverse)
+library(dplyr)
+library(tseries)
+library(forecast)
+library(lubridate)
+library(fUnitRoots)
+library(zoo)
+```
+
+```{r reformate, echo=FALSE}
+date <- date$date
+date <- data.frame(date)
+names(date)[names(date) == "date"] <- "Date"
+date <- date %>% left_join(data, by = c('Date'))
+```
+
+```{r, overall moving average plot, echo = FALSE, fig.cap = 'Overall Moving Average Plot For DJIA Data'}
+data_ma <- data %>%
+  select(Date, srate = Open) %>%
+  mutate(srate_ma5 = rollmean(srate, k = 5, fill = NA),
+         srate_ma30 = rollmean(srate, k = 30, fill = NA),
+         srate_ma180 = rollmean(srate, k = 180, fill = NA))
+data_ma <- data_ma %>% drop_na()
+data_ma %>%
+  gather(metric, Open, srate:srate_ma180) %>%
+  ggplot(aes(Date, Open, color = metric, group = 1))  +
+  geom_line() + 
+  scale_color_manual(labels = c("Price", "MA7", "MA30", "MA180"), values = c("blue", "red3", "orange", "green")) + 
+  labs(color = "Moving Average")+
+  theme_classic()+ theme(axis.text.x = element_blank()) + 
+  theme(legend.position = "top") 
+```
+
+```{r, echo = FALSE}
+tsdata <- ts(data = date$Open, start = decimal_date(as.Date("2006-01-01")), 
+             frequency = 365)
+```
+
+```{r, echo = FALSE}
+tsdata_1 <- window(tsdata, start = decimal_date(as.Date("2006-01-01")),
+                   end = decimal_date(as.Date("2010-12-31"))) # Training data
+tsdata_2 <- window(tsdata, start = decimal_date(as.Date("2019-06-01")),
+                   end = decimal_date(as.Date("2020-10-31"))) # Validation data
+tsdata_3 <- window(tsdata, start = decimal_date(as.Date("2020-11-01")),
+                   end = decimal_date(as.Date("2021-07-31"))) # Testing data
+tsdata_4 <- window(tsdata, start = decimal_date(as.Date("2020-08-01"))) 
+# Prediction data
+tsdata_1 <- tsdata_1 %>% na.remove()
+tsdata_2 <- tsdata_2 %>% na.remove()
+tsdata_3 <- tsdata_3 %>% na.remove()
+tsdata_4 <- tsdata_4 %>% na.remove()
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(tsbox)
+data_1 <- ts_df(tsdata_1)
+data_2 <- ts_df(tsdata_2)
+data_3 <- ts_df(tsdata_3)
+data_4 <- ts_df(tsdata_4)
+names(data_1)[names(data_1) == "time"] <- "Date"
+names(data_1)[names(data_1) == "value"] <- "Open"
+names(data_2)[names(data_2) == "time"] <- "Date"
+names(data_2)[names(data_2) == "value"] <- "Open"
+names(data_3)[names(data_3) == "time"] <- "Date"
+names(data_3)[names(data_3) == "value"] <- "Open"
+names(data_4)[names(data_4) == "time"] <- "Date"
+names(data_4)[names(data_4) == "value"] <- "Open"
+```
+
+```{r, echo = FALSE, fig.cap = 'Overall Moving Average Plot For Training Data'}
+data_1_ma <- data_1 %>%
+  select(Date, srate = Open) %>%
+  mutate(srate_ma5 = rollmean(srate, k = 5, fill = NA),
+         srate_ma30 = rollmean(srate, k = 30, fill = NA),
+         srate_ma180 = rollmean(srate, k = 180, fill = NA))
+data_1_ma <- data_1_ma %>% drop_na()
+data_1_ma %>%
+  gather(metric, Open, srate:srate_ma180) %>%
+  ggplot(aes(Date, Open, color = metric, group = 1))  +
+  geom_line() + 
+  scale_color_manual(labels = c("Price", "MA7", "MA30", "MA180"), values = c("blue", "red3", "orange", "green")) + 
+  labs(color = "Moving Average")+
+  theme_classic()+ theme(axis.text.x = element_blank()) + 
+  theme(legend.position = "top") 
+```
+
+```{r, echo = FALSE, fig.cap = 'Overall Moving Average Plot For Validation Data'}
+data_2_ma <- data_2 %>%
+  select(Date, srate = Open) %>%
+  mutate(srate_ma5 = rollmean(srate, k = 5, fill = NA),
+         srate_ma30 = rollmean(srate, k = 30, fill = NA),
+         srate_ma180 = rollmean(srate, k = 180, fill = NA))
+data_2_ma <- data_2_ma %>% drop_na()
+data_2_ma %>%
+  gather(metric, Open, srate:srate_ma180) %>%
+  ggplot(aes(Date, Open, color = metric, group = 1))  +
+  geom_line() + 
+  scale_color_manual(labels = c("Price", "MA7", "MA30", "MA180"), values = c("blue", "red3", "orange", "green")) + 
+  labs(color = "Moving Average")+
+  theme_classic()+ theme(axis.text.x = element_blank()) + 
+  theme(legend.position = "top") 
+```
+
+```{r, echo = FALSE, fig.cap = 'Overall Moving Average Plot For Testing Data'}
+data_3_ma <- data_3 %>%
+  select(Date, srate = Open) %>%
+  mutate(srate_ma5 = rollmean(srate, k = 5, fill = NA),
+         srate_ma30 = rollmean(srate, k = 30, fill = NA),
+         srate_ma180 = rollmean(srate, k = 180, fill = NA))
+data_3_ma <- data_3_ma %>% drop_na()
+data_3_ma %>%
+  gather(metric, Open, srate:srate_ma180) %>%
+  ggplot(aes(Date, Open, color = metric, group = 1))  +
+  geom_line() + 
+  scale_color_manual(labels = c("Price", "MA7", "MA30", "MA180"), values = c("blue", "red3", "orange", "green")) + 
+  labs(color = "Moving Average")+
+  theme_classic()+ theme(axis.text.x = element_blank()) + 
+  theme(legend.position = "top") 
+```
+
+```{r, echo = FALSE, fig.cap = 'Overall Moving Average Plot For Prediction Data'}
+data_4_ma <- data_4 %>%
+  select(Date, srate = Open) %>%
+  mutate(srate_ma5 = rollmean(srate, k = 5, fill = NA),
+         srate_ma30 = rollmean(srate, k = 30, fill = NA),
+         srate_ma180 = rollmean(srate, k = 180, fill = NA))
+data_4_ma <- data_4_ma %>% drop_na()
+data_4_ma %>%
+  gather(metric, Open, srate:srate_ma180) %>%
+  ggplot(aes(Date, Open, color = metric, group = 1))  +
+  geom_line() + 
+  scale_color_manual(labels = c("Price", "MA7", "MA30", "MA180"), values = c("blue", "red3", "orange", "green")) + 
+  labs(color = "Moving Average")+
+  theme_classic()+ theme(axis.text.x = element_blank()) + 
+  theme(legend.position = "top") 
+```
+
